@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "image_loader.h": "c",
+        "neural_network.h": "c",
+        "algebra.h": "c",
+        "win_ext.h": "c"
+    }
+}
