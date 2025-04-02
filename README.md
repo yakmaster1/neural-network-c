@@ -1,1 +1,1 @@
-# neural_network_c
+# neural-network-c
