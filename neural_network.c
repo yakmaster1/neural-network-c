@@ -36,8 +36,8 @@ void connect_layers(NeuralNetwork* network, int start_layer, NetworkStats* stats
 {
 	NeuralLayer* from = network->layers[start_layer];
 	NeuralLayer* to = network->layers[start_layer+1];
-	int matrix_rows = stats->neurons_per_layer[start_layer];
-	int matrix_columns = stats->neurons_per_layer[start_layer+1];
+	int matrix_columns = stats->neurons_per_layer[start_layer];
+	int matrix_rows = stats->neurons_per_layer[start_layer+1];
 	network->weights[start_layer] = create_m(matrix_rows, matrix_columns);
 
 	for (int i = 0; i < from->size; i++) {
@@ -120,6 +120,58 @@ void dispose_network(NeuralNetwork* network, NetworkStats* stats)
 	free(stats);
 }
 
+void compute_activation(NeuralNetwork* network, int layer)
+{
+	if (layer < 1) 
+	{
+		printf("[ERROR] compute_activation() -> layer < 1: %d < 1\n", layer);
+		return;
+	}
+	if (layer >= network->num_layers)
+	{
+		printf("[ERROR] compute_activation() -> layer >= network->num_layers: %d >= %d\n", layer, network->num_layers);
+		return;		
+	}
+	Matrix* weight_matrix = network->weights[layer-1];
+	Vector* activation_vector = network->activations[layer-1];
+	Vector* bias_vector = network->biases[layer];
+	Vector* output_activations = network->activations[layer];
+
+	Vector* transformation = transform_v(weight_matrix, activation_vector);
+	Vector* added = add_v(transformation, bias_vector);
+	sigmoid_v(added);
+
+	if (output_activations->size == added->size) 
+	{
+		for (int i = 0; i < output_activations->size; i++)
+		{
+			output_activations->elements[i] = added->elements[i];
+		}
+	}
+	else
+	{
+		printf("Something went horribly wrong. Please shut down the nework immediately!\n");
+	}
+
+	dispose_v(transformation);
+	dispose_v(added);
+}
+
+float calculate_cost(Vector* network_output, Vector* desired_output)
+{
+	float cost = 0.0f;
+	if (network_output->size != desired_output->size)
+	{
+		printf("Something went horribly wrong. Please shut down the nework immediately!\n");
+		return cost;
+	}
+	for (int i = 0; i < network_output->size; i++)
+	{
+		cost += exp2(network_output->elements[i] - desired_output->elements[i]);
+	}
+	return cost;
+}
+
 void print_network_stats(NetworkStats* stats)
 {
 	//clear_console();
@@ -128,16 +180,12 @@ void print_network_stats(NetworkStats* stats)
 int main()
 {
 	NetworkStats* stats = init_network_stats(
-		(int[]){784,16,16,10}, 4
+		(int[]){10,5,1},
+		3
 	);
-
-	NeuralNetwork* network = init_network(
-		stats	
-	);
-	print_network_stats(stats);
-
+	NeuralNetwork* network = init_network(stats);
 	
-	dispose_network(network, stats);
+	compute_activation(network, 1);
 
-	return 0;
+	dispose_network(network, stats);
 }

@@ -311,3 +311,11 @@ float sigmoid(float input)
 {
 	return 1 / (1 + pow(E, -input));
 }
+
+void sigmoid_v(Vector* vector)
+{
+    for (int i = 0; i < vector->size; i++)
+    {
+        vector->elements[i] = sigmoid(vector->elements[i]);
+    }
+}
