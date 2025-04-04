@@ -4,13 +4,29 @@ Vector* create_v(float* elements, int size)
 {
     if (size < 0) {size = 0;}
     Vector* p_vector = malloc(sizeof(Vector));
+    CHECK_MALLOC(p_vector);
     p_vector->size = size;
     p_vector->elements = calloc(size, sizeof(float));
+    CHECK_MALLOC(p_vector->elements);
     for (int i = 0; i < size; i++)
     {
         p_vector->elements[i] = elements[i];
     }
     return p_vector;
+}
+
+Vector* create_single_number_v(int size, int index, float value)
+{
+    if (size < 0) {size = 0;}
+    float* zero_elements = calloc(size, sizeof(float));
+    CHECK_MALLOC(zero_elements);
+    if (index <= size-1)
+    {
+        zero_elements[index] = value;
+    }
+    Vector* vector = create_v(zero_elements, size);
+    free(zero_elements);
+    return vector;    
 }
 
 void dispose_m(Matrix* matrix)
@@ -36,6 +52,7 @@ Stcvec stcvec(float* elements, int size)
     Stcvec vector;
     vector.size = size;
     vector.elements = calloc(size, sizeof(float));
+    CHECK_MALLOC(vector.elements);
     for (int i = 0; i < size; i++)
     {
         vector.elements[i] = elements[i];
@@ -51,6 +68,7 @@ Stcvec stcvec_v(Vector* vector)
 Vector* createzero_v(int size)
 {
     float* zero_elements = calloc(size, sizeof(float));
+    CHECK_MALLOC(zero_elements);
     Vector* zero_vector = create_v(zero_elements, size);
     free(zero_elements);
     return zero_vector;
@@ -117,10 +135,13 @@ Matrix* create_m(int rows, int columns)
     if (rows < 0) {rows = 0;}
     if (columns < 0) {columns = 0;}
     Matrix* p_matrix = malloc(sizeof(Matrix));
+    CHECK_MALLOC(p_matrix);
     p_matrix->rows = rows;
     p_matrix->columns = columns;
     p_matrix->vectors = malloc(sizeof(Vector*) * columns);
+    CHECK_MALLOC(p_matrix->vectors);
     float* zero_column = calloc(rows, sizeof(float));
+    CHECK_MALLOC(zero_column);
     for (int i = 0; i < columns; i++)
     {
         p_matrix->vectors[i] = create_v(zero_column, rows);
@@ -132,6 +153,7 @@ Matrix* create_m(int rows, int columns)
 float* crearr_m(Matrix* matrix)
 {
     float* list = malloc(sizeof(float) * matrix->rows * matrix->columns);
+    CHECK_MALLOC(list);
     int i = 0;
     for (int c = 0; c < matrix->columns; c++)
     {
@@ -230,6 +252,7 @@ Vector* extrcv_m(Matrix* matrix, int index)
     }
     int column_size = matrix->rows;
     float* vector_values = calloc(column_size, sizeof(float));
+    CHECK_MALLOC(vector_values);
     for (int i = 0; i < column_size; i++)
     {
         vector_values[i] = matrix->vectors[index]->elements[i];
@@ -267,6 +290,7 @@ Matrix* mult_m(Matrix* m1, Matrix* m2)
     Stcvec column_vector;
     float dot_product;
     float* column_vector_elements = malloc(sizeof(float) * column_size);
+    CHECK_MALLOC(column_vector_elements);
     for (int c = 0; c < row_size; c++)
     {
         for (int r = 0; r < column_size; r++)
@@ -296,6 +320,7 @@ Vector* transform_v(Matrix* transformation, Vector* vector)
     Vector* result_vector;
     float dot_product;
     float* result_vector_elements = malloc(sizeof(float) * column_size);
+    CHECK_MALLOC(result_vector_elements);
     for (int r = 0; r < column_size; r++)
     {
         vector_m1 = extrrv_m(transformation, r);

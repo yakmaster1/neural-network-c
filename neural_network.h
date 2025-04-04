@@ -43,6 +43,7 @@ struct NeuronConnection
 
 struct NeuralNetwork 
 {
+	NetworkStats* stats;
 	int num_layers;
 	NeuralLayer** layers;
 
@@ -55,6 +56,7 @@ struct NetworkStats
 {
 	int* neurons_per_layer;
 	int layers;
+	char activation_method;
 };
 
 #endif

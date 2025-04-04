@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "win_ext.h"
+
 #define E 2.718281f
 
 typedef struct Vector Vector;
@@ -40,5 +42,6 @@ void print_v(Vector* vector);
 void print_m(Matrix* matrix);
 Vector* transform_v(Matrix* transformation, Vector* vector);
 Vector* add_v(Vector* vector_1, Vector* vector_2);
+Vector* create_single_number_v(int size, int index, float value);
 
 #endif
