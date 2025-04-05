@@ -44,6 +44,7 @@ Vector* transform_v(Matrix* transformation, Vector* vector);
 Vector* add_v(Vector* vector_1, Vector* vector_2);
 Vector* create_single_number_v(int size, int index, float value);
 void addrv_m(Matrix* matrix, Stcvec row_vector, int index);
-Stcvec stcvec(float* elements, int size);
+void addcv_m(Matrix* matrix, Stcvec column_vector, int index);
+Stcvec copy_v(Vector* vector);
 
 #endif

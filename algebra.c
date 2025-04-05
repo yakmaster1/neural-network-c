@@ -60,7 +60,7 @@ Stcvec stcvec(float* elements, int size)
     return vector;    
 }
 
-Stcvec stcvec_v(Vector* vector)
+Stcvec copy_v(Vector* vector)
 {
     return stcvec(vector->elements, vector->size);
 }

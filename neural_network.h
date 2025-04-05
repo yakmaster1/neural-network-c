@@ -13,39 +13,12 @@
 #define HIDDEN_L2 16
 #define OUTPUT_LAYER 10
 
-
-typedef struct NeuralLayer NeuralLayer;
 typedef struct NeuralNetwork NeuralNetwork;
-typedef struct Neuron Neuron;
-typedef struct NeuronConnection NeuronConnection;
 typedef struct NetworkStats NetworkStats;
-
-struct NeuralLayer
-{
-	int size;
-	Neuron** neurons;
-};
-
-struct Neuron 
-{
-    int num_inputs;
-	NeuronConnection** inputs;
-
-	int num_outputs;
-	NeuronConnection** outputs;
-};
-
-struct NeuronConnection 
-{
-    Neuron* from;
-    Neuron* to;
-};
 
 struct NeuralNetwork 
 {
 	NetworkStats* stats;
-	int num_layers;
-	NeuralLayer** layers;
 
 	Matrix** weights;
 	Vector** biases;
@@ -59,5 +32,7 @@ struct NetworkStats
 	int* neurons_per_layer;
 	int layers;
 };
+
+void print_activation_vector(NeuralNetwork* network, int index);
 
 #endif
