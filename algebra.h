@@ -37,11 +37,13 @@ Matrix* create_m(int rows, int columns);
 Vector* createzero_v(int size);
 void dispose_v(Vector* vector);
 void dispose_m(Matrix* matrix);
-void sigmoid_v(Vector* vector);
+float sigmoid(float input);
 void print_v(Vector* vector);
 void print_m(Matrix* matrix);
 Vector* transform_v(Matrix* transformation, Vector* vector);
 Vector* add_v(Vector* vector_1, Vector* vector_2);
 Vector* create_single_number_v(int size, int index, float value);
+void addrv_m(Matrix* matrix, Stcvec row_vector, int index);
+Stcvec stcvec(float* elements, int size);
 
 #endif

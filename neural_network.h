@@ -50,13 +50,14 @@ struct NeuralNetwork
 	Matrix** weights;
 	Vector** biases;
 	Vector** activations;
+	Vector** deltas;
+	Vector** weighted_sums;
 };
 
 struct NetworkStats
 {
 	int* neurons_per_layer;
 	int layers;
-	char activation_method;
 };
 
 #endif

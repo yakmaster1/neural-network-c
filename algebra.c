@@ -100,7 +100,7 @@ void print_rv(Vector* vector)
     {
         printf("%.2f", vector->elements[i]);
         if (i < vector->size - 1) {
-            printf(" | ");
+            printf("  ");
         }
     }
     printf(" |\n");
@@ -191,14 +191,7 @@ void print_m(Matrix* matrix)
     for (int v = 0; v < column_vectors; v++)
     {
         vector = transposed->vectors[v];
-        printf("| ");
-        for (int e = 0; e < vector->size; e++)
-        {
-            printf("%.2f", vector->elements[e]);
-            if (rows-1 > e) {printf(" | ");} 
-            else {printf(" |");}
-        }
-        printf("\n");
+        print_rv(vector);
     }
     free(vector);
     free(transposed);
