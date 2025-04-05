@@ -3,6 +3,7 @@
         "image_loader.h": "c",
         "neural_network.h": "c",
         "algebra.h": "c",
-        "win_ext.h": "c"
+        "win_ext.h": "c",
+        "network_logging.h": "c"
     }
 }

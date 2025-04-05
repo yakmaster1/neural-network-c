@@ -1,24 +1,32 @@
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include "neural_network.h"
+#include "network_logging.h"
 
 NeuralNetwork* init_network(NetworkStats* stats)
 {
 	NeuralNetwork* network = malloc(sizeof(NeuralNetwork));
-	CHECK_MALLOC(network);
+	if (network == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 
 	network->stats = stats;
 
 	int layers = network->stats->layers;
 
 	network->activations = malloc(sizeof(Vector*) * layers);
-	CHECK_MALLOC(network->activations);
+	if (network->activations == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 	network->weights = malloc(sizeof(Matrix*) * (layers-1));
-	CHECK_MALLOC(network->weights);
+	if (network->weights == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 	network->biases = malloc(sizeof(Vector*) * (layers-1));
-	CHECK_MALLOC(network->biases);
+	if (network->biases == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 	network->deltas = malloc(sizeof(Vector*) * (layers-1));
-	CHECK_MALLOC(network->deltas);
+	if (network->deltas == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 	network->weighted_sums = malloc(sizeof(Vector*) * (layers-1));
-	CHECK_MALLOC(network->weighted_sums);
+	if (network->weighted_sums == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
+	network->desired_output = createzero_v(network->stats->neurons_per_layer[layers-1]);
+	network->error_vector = createzero_v(network->stats->neurons_per_layer[layers-1]);
 
 	for (int i = 0; i < layers; i++)
 	{
@@ -26,7 +34,7 @@ NeuralNetwork* init_network(NetworkStats* stats)
 		network->activations[i] = createzero_v(layer_size);
 		if (i > 0)
 		{
-			network->biases[i-1] = createzero_v(layer_size);
+			network->biases[i-1] = createrandom_v(layer_size);
 			network->deltas[i-1] = createzero_v(layer_size);
 			network->weighted_sums[i-1] = createzero_v(layer_size);
 		}
@@ -34,8 +42,8 @@ NeuralNetwork* init_network(NetworkStats* stats)
 	for (int i = 0; i < layers -1; i++)
 	{
 		int prev_layer_size = network->stats->neurons_per_layer[i];
-		int next_layer_size = network->stats->neurons_per_layer[i+1];
-		network->weights[i] = create_m(next_layer_size, prev_layer_size);
+		int layer_size = network->stats->neurons_per_layer[i+1];
+		network->weights[i] = createrandom_m(layer_size, prev_layer_size);
 	}
 	return network;
 }
@@ -43,9 +51,9 @@ NeuralNetwork* init_network(NetworkStats* stats)
 NetworkStats* init_network_stats(int* layer_sizes, int layers)
 {
 	NetworkStats* stats = malloc(sizeof(NetworkStats));
-	CHECK_MALLOC(stats);
+	if (stats == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 	stats->neurons_per_layer = malloc(sizeof(int) * layers);
-	CHECK_MALLOC(stats->neurons_per_layer);
+	if (stats->neurons_per_layer == NULL) {printf("Malloc failed!\n");exit(EXIT_FAILURE);}
 	for (int i = 0; i < layers; i++)
 	{
 		stats->neurons_per_layer[i] = layer_sizes[i];
@@ -63,31 +71,35 @@ void print_network_stats(NeuralNetwork* network)
 	}
 }
 
-void print_network_elements(NeuralNetwork* network)
+void set_desired_input(NeuralNetwork* network, Vector* desired_input_vector)
 {
-	printf("Activations | Biases | Deltas | Weighted sums\n");
-	for (int i = 0; i < network->stats->layers; i++)
+	int input_layer_size = network->stats->neurons_per_layer[0];
+	if(!(input_layer_size == desired_input_vector->size)) {printf("ERROR => set_desired_input => 1\n"); return;}
+	for (int i = 0; i < desired_input_vector->size; i++)
 	{
-		int columns = (i == 0) ? 1 : 4;
-		Matrix* matrix = create_m(network->stats->neurons_per_layer[i], columns);
-		addcv_m(matrix, copy_v(network->activations[i]), 0);
-		if (i < 0)
-		{
-			addcv_m(matrix, copy_v(network->biases[i]), 1);
-			addcv_m(matrix, copy_v(network->deltas[i]), 2);
-			addcv_m(matrix, copy_v(network->weighted_sums[i]), 3);			
-		}
-		print_m(matrix);
-		printf("\n");
-		free(matrix);
+		network->activations[0]->elements[i] = desired_input_vector->elements[i];
 	}
-	
+	dispose_v(desired_input_vector);
+}
+
+void set_desired_output(NeuralNetwork* network, Vector* desired_output_vector)
+{
+	int index_last_layer = network->stats->layers -1;
+	int output_layer_size = network->stats->neurons_per_layer[index_last_layer];
+	if(!(output_layer_size == desired_output_vector->size)) {printf("ERROR => set_desired_output => 1\n"); return;}
+	for (int i = 0; i < output_layer_size; i++)
+	{
+		network->desired_output->elements[i] = desired_output_vector->elements[i];
+	}
+	dispose_v(desired_output_vector);
 }
 
 void dispose_network(NeuralNetwork* network)
 {
 	if (!network) return;
 	int network_layers = network->stats->layers;
+	dispose_v(network->desired_output);
+	dispose_v(network->error_vector);
 	for (int i = 0; i < network_layers; i++) {
 		dispose_v(network->activations[i]);
 	}
@@ -102,6 +114,7 @@ void dispose_network(NeuralNetwork* network)
 	free(network->biases);
 	free(network->deltas);
 	free(network->weighted_sums);
+
 	free(network->stats->neurons_per_layer);
 	free(network->stats);
 	free(network);
@@ -132,19 +145,12 @@ void compute_activation(NeuralNetwork* network, int index)
 		printf("Something went horribly wrong. Shutting down...\n");
 		exit(EXIT_FAILURE);
 	}
-
 	dispose_v(transformed_vector);
 	dispose_v(added);
 }
 
-Vector* compute_for_input(NeuralNetwork* network, Vector* input_vector, int output_neuron_index)
+void feed_forward(NeuralNetwork* network)
 {
-	int input_layer_size = network->stats->neurons_per_layer[0];
-	if(!(input_layer_size == input_vector->size)) {printf("ERROR => compute_for_input => 1\n"); return NULL;}
-	for (int i = 0; i < input_vector->size; i++)
-	{
-		network->activations[0]->elements[i] = input_vector->elements[i];
-	}
 	int network_layers = network->stats->layers;
 	for (int i = 0; i < network_layers; i++)
 	{
@@ -153,70 +159,90 @@ Vector* compute_for_input(NeuralNetwork* network, Vector* input_vector, int outp
 			compute_activation(network, i);
 		}
 	}
-	int size_last_layer = network->stats->neurons_per_layer[network_layers-1];
-	Vector* desired_output = create_single_number_v(size_last_layer, output_neuron_index, 1.0f);
-	CHECK_MALLOC(desired_output);
-	float* cost_vector_elements = calloc(size_last_layer, sizeof(float));
-	CHECK_MALLOC(cost_vector_elements);
-	for (int i = 0; i < size_last_layer; i++)
+}
+
+float network_cost(NeuralNetwork* network)
+{
+	float cost = 0.0f;
+	int last_layer_index = network->stats->layers -1;
+	for (int i = 0; i < network->desired_output->size; i++)
 	{
-		cost_vector_elements[i] = network->activations[network_layers-1]->elements[i] - desired_output->elements[i];;
+		network->error_vector->elements[i] = network->activations[last_layer_index]->elements[i] - network->desired_output->elements[i];
+		float diff = network->activations[last_layer_index]->elements[i] - network->desired_output->elements[i];
+		cost += diff * diff;
 	}
-	Vector* cost_vector = create_v(cost_vector_elements, size_last_layer);
-	dispose_v(desired_output);
-	free(cost_vector_elements);
-	return cost_vector;
+	return cost;
 }
 
-void print_activation_vector(NeuralNetwork* network, int index)
+void backpropagate(NeuralNetwork* network)
 {
-	if (index < 0) {printf("ERROR => print_activation_vector => 1\n"); return;}
-	if (index > network->stats->layers -1) {printf("ERROR => print_activation_vector => 2\n"); return;}
-	print_v(network->activations[index]);
+	int layers = network->stats->layers;
+	for (int i = 0; i < layers -1; i++)
+	{
+		int layer_index = layers-i-1;
+		int inner_index = layer_index -1;
+		int layer_size = network->stats->neurons_per_layer[layer_index];	
+		if (layer_index == layers -1)
+		{
+			for (int i = 0; i < layer_size; i++)
+			{
+				float a = network->activations[layer_index]->elements[i];
+				float y = network->desired_output->elements[i];
+				float z = network->weighted_sums[inner_index]->elements[i];
+				float dfz = sigmoid_derivative(z);
+				float delta = (a - y) * dfz;
+				network->deltas[inner_index]->elements[i] = delta;
+			}
+		}
+		else
+		{
+			
+			Matrix* transposed_weights = transpose_m(network->weights[layer_index]);
+			Vector* error_vector = transform_v(transposed_weights, network->deltas[layer_index]);
+			for (int i = 0; i < layer_size; i++)
+			{
+				float z = network->weighted_sums[inner_index]->elements[i];
+				float dfz = sigmoid_derivative(z);
+				float e = error_vector->elements[i];
+				float delta = e * dfz;
+				network->deltas[inner_index]->elements[i] = delta;
+			}	
+			dispose_v(error_vector);
+			dispose_m(transposed_weights);
+		}
+	}
 }
 
-void print_bias_vector(NeuralNetwork* network, int index)
+void train_network(NeuralNetwork* network, float learning_rate)
 {
-	if (index < 0) {printf("ERROR => print_bias_vector => 1\n"); return;}
-	if (index > network->stats->layers -2) {printf("ERROR => print_bias_vector => 2\n"); return;}
-	print_v(network->biases[index]);
-}
-
-void print_delta_vector(NeuralNetwork* network, int index)
-{
-	if (index < 0) {printf("ERROR => print_delta_vector => 1\n"); return;}
-	if (index > network->stats->layers -2) {printf("ERROR => print_delta_vector => 2\n"); return;}
-	print_v(network->deltas[index]);
-}
-
-void print_weighted_sum_vector(NeuralNetwork* network, int index)
-{
-	if (index < 0) {printf("ERROR => print_weighted_sum_vector => 1\n"); return;}
-	if (index > network->stats->layers -2) {printf("ERROR => print_weighted_sum_vector => 2\n"); return;}
-	print_v(network->weighted_sums[index]);
-}
-
-void print_weight_matrix(NeuralNetwork* network, int index)
-{
-	if (index < 0) {printf("ERROR => print_weight_matrix => 1\n"); return;}
-	if (index > network->stats->layers -2) {printf("ERROR => print_weight_matrix => 2\n"); return;}
-	print_m(network->weights[index]);
+	for (int layer = 0; layer < network->stats->layers-1; layer++)
+	{
+		int neurons_per_layer = network->stats->neurons_per_layer[layer+1];
+		for (int i = 0; i < neurons_per_layer; i++)
+		{
+			network->biases[layer]->elements[i] = network->biases[layer]->elements[i] - learning_rate * network->deltas[layer]->elements[i];	
+		}
+	}
 }
 
 int main()
 {
-	NetworkStats* stats = init_network_stats(
-		(int[]){10,5,3},
-		3
-	);
+	srand(time(NULL));
 
+	NetworkStats* stats = init_network_stats((int[]){10,5,3},3);
 	NeuralNetwork* network = init_network(stats);
 	
-	Vector* input = create_v((float[]){5,4,3,8,1,7,3,8,6,9}, 10);
-	Vector* v = compute_for_input(network, input, 2);
-	print_v(v);
-	
-	print_network_elements(network);
+	set_desired_input(network, create_v((float[]){5,4,3,8,1,7,3,8,6,9},10));
+	set_desired_output(network, create_v((float[]){0,1,0},3));
+	feed_forward(network);
+
+	//print_network_cost(network);
+	//print_error_vector(network);
+
+	backpropagate(network);
+	train_network(network, 0.1f);
+
+	//print_weight_matrix(network, 0);
 
 	dispose_network(network);
 }

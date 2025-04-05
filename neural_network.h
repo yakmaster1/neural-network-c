@@ -1,11 +1,6 @@
 #ifndef NEURAL_NETWORK
 #define NEURAL_NETWORK
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "win_ext.h"
 #include "algebra.h"
 
 #define INPUT_LAYER 28*28
@@ -25,6 +20,9 @@ struct NeuralNetwork
 	Vector** activations;
 	Vector** deltas;
 	Vector** weighted_sums;
+
+	Vector* desired_output;
+	Vector* error_vector;
 };
 
 struct NetworkStats
@@ -33,6 +31,6 @@ struct NetworkStats
 	int layers;
 };
 
-void print_activation_vector(NeuralNetwork* network, int index);
+float network_cost(NeuralNetwork* network);
 
 #endif
