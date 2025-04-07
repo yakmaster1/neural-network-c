@@ -1,52 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
-typedef struct Vector Vector;
-typedef struct Matrix Matrix;
+#include "alglib.h"
 
-typedef enum OpSequence OpSequence;
-typedef enum VectorOperation VectorOperation;
-typedef enum Bool Bool;
+#define E 2.718281f
 
-struct Vector 
+// Helper function
+float random_float() 
 {
-    int size;
-    float *elements;
-};
+    return (float)rand() / (float)RAND_MAX;
+}
 
-struct Matrix
+// Helper function
+void print_offset(int biggest_offset, int element_offset)
 {
-    int rows;
-    int columns;
+    for (int i = 0; i < biggest_offset-element_offset; i++) {printf(" ");}
+}
 
-    Vector **vectors;
-};
+// Helper function
+int get_size_of_float(float val)
+{
+    if (val == 0.0f) {return signbit(val) ? 2 : 1;}
+    int digits = (int)log10f(fabsf(val)) + 1;
+    if (digits < 1) digits = 1;
+    if (val < 0.0f) {digits += 1;}
+    return digits;
+}
 
-enum OpSequence {
-    RTOL = 0,
-    LTOR = 1
-};
-
-enum VectorOperation {
-    ADDV = 0,
-    SUBV = 1
-};
-
-enum Bool {
-    FALSE = 0,
-    TRUE = 1
-};
-
-Vector *create_v(int size, float *elements, Bool is_zero)
+Vector *create_v(int size, float *elements, VectorDeclaration value_declaration)
 {
     if (size < 1) {printf("create_v -> 2\n"); return NULL;}
     Vector *vector = malloc(sizeof(Vector));
-    if(vector == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    if (vector == NULL) {printf("Mem alloc failed\n"); return NULL;}
     vector->size = size;
     vector->elements = calloc(size, sizeof(float));
-    if(vector->elements == NULL) {printf("Mem alloc failed\n"); return NULL;}
-    if (is_zero == FALSE) {for (int i = 0; i < size; i++) {vector->elements[i] = elements[i];}}
+    if (vector->elements == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    if (value_declaration == INIT) {for (int i = 0; i < size; i++) {vector->elements[i] = elements[i];}}
+    else if (value_declaration == RAND) {for (int i = 0; i < size; i++) {vector->elements[i] = random_float();}}
+    // ZERO -> Calloc
     return vector;
 }
 
@@ -66,24 +59,24 @@ float getvalue_v(Vector *vector, int index)
 
 void dispose_v(Vector *vector)
 {
-    if(vector == NULL) {printf("dispose_v -> 1\n"); return;}
+    if (vector == NULL) {printf("dispose_v -> 1\n"); return;}
     free(vector->elements);
     free(vector);
-}
-
-// Helper function
-void print_offset(int biggest_offset, int element_offset)
-{
-    for (int i = 0; i < biggest_offset-element_offset; i++) {printf(" ");}
 }
 
 void print_v(Vector *vector)
 {
     int biggest_offset = 0;
+    int total_offset = 0;
     int *element_offsets = calloc(vector->size, sizeof(int));
-    if(element_offsets == NULL) {printf("Mem alloc failed\n"); return;}
+    if (element_offsets == NULL) {printf("Mem alloc failed\n"); return;}
     for (int i = 0; i < vector->size; i++) {
-        int element_offset = (vector->elements[i] == 0) ? 1 : (int)(log10(abs(vector->elements[i])) + 1);
+        float val = vector->elements[i];
+        int element_offset = 1;
+        if (fabsf(val) > 1e-6f) {
+            int digits_before_dot = (val == 0.0f) ? 1 : (int)log10f(fabsf(val)) + 1;
+            total_offset = digits_before_dot + 1 + 2 + (val < 0.0f ? 1 : 0);
+        }
         if (vector->elements[i] < 0.0f) {element_offset++;}
         if (element_offset > biggest_offset) {biggest_offset = element_offset;}
         element_offsets[i] = element_offset;
@@ -91,57 +84,50 @@ void print_v(Vector *vector)
     for (int i = 0; i < vector->size; i++)
     {
         printf("|");
-        print_offset(biggest_offset, element_offsets[i]);
+        print_offset(biggest_offset, total_offset);
         printf(" %.2f ", vector->elements[i]);
-        printf("|\n");
+        printf("|");
+        if (i < vector->size -1) {printf("\n");}
     }
     free(element_offsets);
 }
 
-void printmultiple_v(int amount, Vector **vectors, int space, Bool use_divider)
+void printmultiple_v(int amount, Vector **vectors, int space, bool use_divider)
 {
-    if (amount < 1) {printf("printmultiple_v -> 1\n"); return;}
-    if (space < 0) {printf("printmultiple_v -> 2\n"); return;}
+    if (amount < 1) { printf("printmultiple_v -> 1\n"); return; }
+    if (space < 0) { printf("printmultiple_v -> 2\n"); return; }
     int size = vectors[0]->size;
-    for (int i = 0; i < amount; i++)
+    for (int i = 0; i < amount; i++) 
     {
         if (vectors[i]->size != size) {printf("printmultiple_v -> 3\n"); return;}
     }
-    
-    int *biggest_offset = calloc(amount, sizeof(int));
-    if(biggest_offset == NULL) {printf("Mem alloc failed\n"); return;}
-    int *element_offsets = calloc(size * amount, sizeof(int));
-    if(element_offsets == NULL) {printf("Mem alloc failed\n"); return;}
+    int field_width = 7;
+    int precision = 2;
+    int added_offset = 0;
     for (int a = 0; a < amount; a++)
     {
-        for (int s = 0; s < size; s++) {
-            int element_offset = (vectors[a]->elements[s] == 0) ? 1 : (int)(log10(abs(vectors[a]->elements[s])) + 1);
-            if (vectors[a]->elements[s] < 0.0f) {element_offset++;}
-            if (element_offset > biggest_offset[a]) {biggest_offset[a] = element_offset;}
-            element_offsets[a+(s*amount)] = element_offset;
+        for (int s = 0; s < vectors[a]->size; s++)
+        {
+            int float_size = get_size_of_float(vectors[a]->elements[s]);
+            if (float_size >= added_offset) {added_offset = float_size;}
         }
     }
-    for (int s = 0; s < size; s++)
+    for (int s = 0; s < size; s++) 
     {
         printf("|");
-        for (int a = 0; a < amount; a++)
+        for (int a = 0; a < amount; a++) 
         {
             if (a != 0) 
             {
-                if (use_divider == TRUE) {printf("|");}
-                for (int i = 0; i < space; i++)
-                {
-                    printf(" ");
-                }
-                if (use_divider == TRUE) {printf("|");}
+                if (use_divider) printf("|");
+                for (int i = 0; i < space; i++) printf(" ");
+                if (use_divider) printf("|");
             }
-            print_offset(biggest_offset[a], element_offsets[a+(s*amount)]);
-            printf(" %.2f ", vectors[a]->elements[s]);
+            printf(" %*.*f ", field_width + added_offset - 4, precision, vectors[a]->elements[s]);
         }
-        printf("|\n");
+        printf("|");
+        if (s < size - 1) printf("\n");
     }
-    free(biggest_offset);
-    free(element_offsets);
 }
 
 void calc_v(Vector *vector_1, Vector *vector_2, OpSequence mode, VectorOperation method)
@@ -167,7 +153,7 @@ void calc_v(Vector *vector_1, Vector *vector_2, OpSequence mode, VectorOperation
     }
 }
 
-Matrix *create_m(int rows, int columns)
+Matrix *create_m(int rows, int columns, VectorDeclaration value_declaration)
 {
     if (rows < 0 || columns < 0) {printf("create_m -> 1\n"); return NULL;}
     Matrix *matrix = malloc(sizeof(Matrix));
@@ -176,17 +162,17 @@ Matrix *create_m(int rows, int columns)
     matrix->columns = columns;
     matrix->vectors = calloc(columns, sizeof(Vector*));
     if(matrix->vectors == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    VectorDeclaration declaration = (value_declaration == 2) ? 0 : value_declaration;
     for (int i = 0; i < columns; i++)
     {
-        matrix->vectors[i] = create_v(rows, (float[]){0}, TRUE);
+        matrix->vectors[i] = create_v(rows, (float[]){0}, declaration);
     }
-    
     return matrix;    
 }
 
 void print_m(Matrix* matrix)
 {
-    printmultiple_v(matrix->columns, matrix->vectors, 1, FALSE);
+    printmultiple_v(matrix->columns, matrix->vectors, 1, false);
 }
 
 void dispose_m(Matrix *matrix)
@@ -218,14 +204,65 @@ float getvalue_m(Matrix *matrix, int index_row, int index_column)
     return matrix->vectors[index_column]->elements[index_row];
 }
 
-int main()
+void transform_linear(Matrix *transformation, Vector *vector, Vector *result)
 {
-    Matrix *m = create_m(5,3);
-    setvalue_m(m,0,2,-55);
-    setvalue_m(m,1,1,555);
-    print_m(m);
+    if (vector->size != transformation->columns) {printf("transform_linear -> 1\n"); return;}
+    if (result->size != transformation->rows) {printf("transform_linear -> 2\n"); return;}
+    for (int r = 0; r < transformation->rows; r++)
+    {
+        for (int c = 0; c < transformation->columns; c++)
+        {
+            result->elements[r] += transformation->vectors[c]->elements[r] * vector->elements[c];
+        }
+    }
+}
 
-    dispose_m(m);
-    m = NULL;
-    return 0;
+float sigmoid(float input)
+{
+	return 1 / (1 + pow(E, -input));
+}
+
+float abl_sigmoid(float input)
+{
+	return sigmoid(input) * (1 - sigmoid(input));
+}
+
+// For Sigmoid -> Xavier-Glorot-Initialisation
+float random_uniform(float min, float max)
+{
+    return min + ((float)rand() / (float)RAND_MAX) * (max - min);
+}
+
+// For Sigmoid -> Xavier-Glorot-Initialisation
+Vector *init_vector_xavier(int size, float limit)
+{
+    if (size < 1) {printf("init_vector_xavier -> 2\n"); return NULL;}
+    Vector *vector = malloc(sizeof(Vector));
+    if(vector == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    vector->size = size;
+    vector->elements = calloc(size, sizeof(float));
+    if(vector->elements == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    for (int i = 0; i < size; i++) {
+        float random_value = random_uniform(-limit, limit);
+        vector->elements[i] = random_value;
+    }
+    return vector;
+}
+
+// For Sigmoid -> Xavier-Glorot-Initialisation
+Matrix *init_matrix_xavier(int rows, int columns)
+{
+    if (rows < 0 || columns < 0) {printf("init_matrix_xavier -> 1\n"); return NULL;}
+    Matrix *matrix = malloc(sizeof(Matrix));
+    if(matrix == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    matrix->rows = rows;
+    matrix->columns = columns;
+    matrix->vectors = calloc(columns, sizeof(Vector*));
+    if(matrix->vectors == NULL) {printf("Mem alloc failed\n"); return NULL;}
+    float limit = 1.0f / sqrtf((float)columns);
+    for (int i = 0; i < columns; i++)
+    {
+        matrix->vectors[i] = init_vector_xavier(rows, limit);
+    }
+    return matrix;
 }
