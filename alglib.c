@@ -7,10 +7,10 @@
 
 #define E 2.718281f
 
-// Helper function
-float random_float() 
+// For Sigmoid -> Xavier-Glorot-Initialisation
+float random_uniform(float min, float max)
 {
-    return (float)rand() / (float)RAND_MAX;
+    return min + ((float)rand() / (float)RAND_MAX) * (max - min);
 }
 
 // Helper function
@@ -38,23 +38,9 @@ Vector *create_v(int size, float *elements, VectorDeclaration value_declaration)
     vector->elements = calloc(size, sizeof(float));
     if (vector->elements == NULL) {printf("Mem alloc failed\n"); return NULL;}
     if (value_declaration == INIT) {for (int i = 0; i < size; i++) {vector->elements[i] = elements[i];}}
-    else if (value_declaration == RAND) {for (int i = 0; i < size; i++) {vector->elements[i] = random_float();}}
+    else if (value_declaration == RAND) {for (int i = 0; i < size; i++) {vector->elements[i] = random_uniform(0,1);}}
     // ZERO -> Calloc
     return vector;
-}
-
-void setvalue_v(Vector *vector, int index, float new_value)
-{
-    if (index > vector->size -1) {printf("setvalue_v -> 1\n"); return;}
-    if (index < 0) {printf("setvalue_v -> 2\n"); return;}
-    vector->elements[index] = new_value;
-}
-
-float getvalue_v(Vector *vector, int index)
-{
-    if (index > vector->size -1) {printf("getvalue_v -> 1\n"); return NAN;}
-    if (index < 0) {printf("getvalue_v -> 2\n"); return NAN;}
-    return vector->elements[index];
 }
 
 void dispose_v(Vector *vector)
@@ -130,29 +116,6 @@ void printmultiple_v(int amount, Vector **vectors, int space, bool use_divider)
     }
 }
 
-void calc_v(Vector *vector_1, Vector *vector_2, OpSequence mode, VectorOperation method)
-{
-    if (!(mode == RTOL || mode == LTOR)) {printf("add_v -> 1\n"); return;}
-    if (vector_1->size != vector_2->size) {printf("add_v -> 2\n"); return;}
-    int size = vector_1->size;
-    Vector *parent_vector = (mode == RTOL) ? vector_1 : vector_2;
-    Vector *child_vector = (mode == RTOL) ? vector_2 : vector_1;
-    if (method == ADDV)
-    {
-        for (int i = 0; i < size; i++)
-        {
-            parent_vector->elements[i] += child_vector->elements[i];
-        }        
-    }
-    if (method == SUBV)
-    {
-        for (int i = 0; i < size; i++)
-        {
-            parent_vector->elements[i] -= child_vector->elements[i];
-        }        
-    }
-}
-
 Matrix *create_m(int rows, int columns, VectorDeclaration value_declaration)
 {
     if (rows < 0 || columns < 0) {printf("create_m -> 1\n"); return NULL;}
@@ -186,30 +149,13 @@ void dispose_m(Matrix *matrix)
     free(matrix);    
 }
 
-void setvalue_m(Matrix *matrix, int index_row, int index_column, float new_value)
-{
-    if (index_row > matrix->rows -1) {printf("setvalue_m -> 1\n"); return;}
-    if (index_row < 0) {printf("setvalue_m -> 2\n"); return;}
-    if (index_column > matrix->columns -1) {printf("setvalue_m -> 3\n"); return;}
-    if (index_column < 0) {printf("setvalue_m -> 4\n"); return;}
-    matrix->vectors[index_column]->elements[index_row] = new_value;
-}
-
-float getvalue_m(Matrix *matrix, int index_row, int index_column)
-{
-    if (index_row > matrix->rows -1) {printf("getvalue_m -> 1\n"); return NAN;}
-    if (index_row < 0) {printf("getvalue_m -> 2\n"); return NAN;}
-    if (index_column > matrix->columns -1) {printf("getvalue_m -> 3\n"); return NAN;}
-    if (index_column < 0) {printf("getvalue_m -> 4\n"); return NAN;}
-    return matrix->vectors[index_column]->elements[index_row];
-}
-
 void transform_linear(Matrix *transformation, Vector *vector, Vector *result)
 {
     if (vector->size != transformation->columns) {printf("transform_linear -> 1\n"); return;}
     if (result->size != transformation->rows) {printf("transform_linear -> 2\n"); return;}
     for (int r = 0; r < transformation->rows; r++)
     {
+        result->elements[r] = 0.0f;
         for (int c = 0; c < transformation->columns; c++)
         {
             result->elements[r] += transformation->vectors[c]->elements[r] * vector->elements[c];
@@ -219,18 +165,12 @@ void transform_linear(Matrix *transformation, Vector *vector, Vector *result)
 
 float sigmoid(float input)
 {
-	return 1 / (1 + pow(E, -input));
+	return 1.0f / (1.0f + pow(E, -input));
 }
 
 float abl_sigmoid(float input)
 {
-	return sigmoid(input) * (1 - sigmoid(input));
-}
-
-// For Sigmoid -> Xavier-Glorot-Initialisation
-float random_uniform(float min, float max)
-{
-    return min + ((float)rand() / (float)RAND_MAX) * (max - min);
+	return sigmoid(input) * (1.0f - sigmoid(input));
 }
 
 // For Sigmoid -> Xavier-Glorot-Initialisation

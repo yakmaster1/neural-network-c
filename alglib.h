@@ -23,16 +23,11 @@ struct Matrix
     Vector **vectors;
 };
 
-enum OpSequence 
-{
-    RTOL = 0,
-    LTOR = 1
-};
-
 enum VectorOperation 
 {
     ADDV = 0,
-    SUBV = 1
+    SUBV = 1,
+    HPROD = 2
 };
 
 enum VectorDeclaration 
@@ -49,6 +44,7 @@ void dispose_m(Matrix *matrix);
 void print_v(Vector *vector);
 void printmultiple_v(int amount, Vector **vectors, int space, bool use_divider);
 void print_m(Matrix* matrix);
+
 void transform_linear(Matrix *transformation, Vector *vector, Vector *result);
 
 float sigmoid(float input);

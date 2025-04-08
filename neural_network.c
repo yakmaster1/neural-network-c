@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <windows.h>
 
 #include "alglib.h"
 
@@ -56,7 +57,7 @@ NeuralNetwork *init_network(int *neurons_per_layer, int size)
         int neurons_prev_layer = network->neurons_per_layer[i];
         int neurons_layer = network->neurons_per_layer[i+1];
         network->weights[i] = init_matrix_xavier(neurons_layer, neurons_prev_layer); //RAND
-        network->biases[i] = create_v(neurons_layer, (float[]){0}, ZERO);
+        network->biases[i] = create_v(neurons_layer, (float[]){0}, ZERO); //RAND
         network->deltas[i] = create_v(neurons_layer, (float[]){0}, ZERO);
         network->weighted_sums[i] = create_v(neurons_layer, (float[]){0}, ZERO);
     }  
@@ -137,12 +138,12 @@ void calculate_cost(NeuralNetwork *network)
 {
     int index_last_layer = network->size -1;
     float cost = 0.0f;
-    for (int i = 0; i < index_last_layer; i++)
+    for (int i = 0; i < network->neurons_per_layer[index_last_layer]; i++)
     {
         float diff = network->activations[index_last_layer]->elements[i] - network->desired_output->elements[i];
         cost += diff * diff;
     }
-    network->cost = cost;
+    network->cost = 0.5f * cost;
 }
 
 void compute_activation(NeuralNetwork *network)
@@ -150,6 +151,9 @@ void compute_activation(NeuralNetwork *network)
     for (int i = 0; i < network->size -1; i++) 
     {
         transform_linear(network->weights[i], network->activations[i], network->weighted_sums[i]);
+        for (int j = 0; j < network->neurons_per_layer[i+1]; j++) {
+            network->weighted_sums[i]->elements[j] += network->biases[i]->elements[j];
+        }
         apply_activation_function(network, i+1);
     }
     calculate_cost(network);
@@ -173,42 +177,83 @@ void set_desired_single_output(NeuralNetwork *network, int output_index)
     }
 }
 
-void backpropagate(NeuralNetwork *network)
+void train_network(NeuralNetwork *network, float learning_rate)
 {
-    int index_last_layer = network->size -1;
-    for (int ns = 0; ns < network->size -1; ns++)
+    for (int ns = 0; ns < network->size - 1; ns++)
     {
-        int i_desc = index_last_layer -ns;
+        int layer_size = network->neurons_per_layer[ns+1];
+        for (int ls = 0; ls < layer_size; ls++)
+        {
+            network->biases[ns]->elements[ls] -= learning_rate * network->deltas[ns]->elements[ls];
+        }
+
+        Matrix *weight_matrix = network->weights[ns];
+        Vector *activations = network->activations[ns];
+        Vector *deltas = network->deltas[ns];
+        for (int c = 0; c < weight_matrix->columns; c++)
+        {
+            for (int r = 0; r < weight_matrix->rows; r++)
+            {
+                float weight_value = weight_matrix->vectors[c]->elements[r];
+                weight_matrix->vectors[c]->elements[r] -= learning_rate * activations->elements[c] * deltas->elements[r];
+            } 
+        }
+    }   
+}
+
+void backpropagate(NeuralNetwork *network, float learning_rate)
+{
+    int index_last_layer = network->size - 1;
+    for (int ns = 0; ns < network->size - 1; ns++)
+    {
+        int i_desc = index_last_layer - ns;
         int layer_size = network->neurons_per_layer[i_desc];
         for (int ls = 0; ls < layer_size; ls++)
         {
-            float abl_act = abl_sigmoid(network->weighted_sums[i_desc-1]->elements[ls]);
+            float abl_act = abl_sigmoid(network->weighted_sums[i_desc -1]->elements[ls]);
             if (i_desc == index_last_layer)
             {
                 float network_output = network->activations[i_desc]->elements[ls];
                 float desired_output = network->desired_output->elements[ls];
                 float value = abl_act * (network_output - desired_output);
-                network->deltas[i_desc-1]->elements[ls] = value;
+                network->deltas[i_desc - 1]->elements[ls] = value;
             }
             else
             {
-
+                float sum = 0.0f;
+                for (int pl = 0; pl < network->neurons_per_layer[i_desc +1]; pl++)
+                {
+                    float weight = network->weights[i_desc]->vectors[ls]->elements[pl];
+                    float delta_next = network->deltas[i_desc]->elements[pl];
+                    sum += weight * delta_next;
+                }
+                network->deltas[i_desc - 1]->elements[ls] = abl_act * sum;
             }
         }
-    } 
+    }
+    train_network(network, learning_rate);
 }
 
 int main()
 {
-    NeuralNetwork *network = init_network((int[]){6,5,4,3},4);
+    NeuralNetwork *network = init_network((int[]){6,5,5,3},4);
     Vector *input = create_v(6, (float[]){1,2,3,4,5,6}, INIT);
 
     set_network_input(network, input);
     set_desired_single_output(network, 2);
 
-    compute_activation(network);
-    backpropagate(network);
+    for (int i = 0; i < 200; i++)
+    {
+        compute_activation(network);
+        backpropagate(network, 0.1f);
+        system("cls");
+        printf("Iteration %d/200\n", i);
+        print_network_output(network);
+        Sleep(1);
+    }
 
+    system("cls");
+    print_network_weights(network, false);
     print_network_vectors(network, true);
     
     dispose_network(network);
