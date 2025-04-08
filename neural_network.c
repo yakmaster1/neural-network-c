@@ -5,6 +5,9 @@
 #include <windows.h>
 
 #include "alglib.h"
+#include "image_extr.h"
+
+#define MAX_COMMAND_LENGTH 256
 
 typedef struct NeuralNetwork NeuralNetwork;
 
@@ -146,6 +149,22 @@ void calculate_cost(NeuralNetwork *network)
     network->cost = 0.5f * cost;
 }
 
+void softmax(Vector *z, Vector *output)
+{
+    float max_val = z->elements[0];
+    for (int i = 1; i < z->size; i++) 
+    {
+        if (z->elements[i] > max_val) {max_val = z->elements[i];}
+    }
+    float sum = 0.0f;
+    for (int i = 0; i < z->size; i++) 
+    {
+        output->elements[i] = expf(z->elements[i] - max_val);
+        sum += output->elements[i];
+    }
+    for (int i = 0; i < z->size; i++) {output->elements[i] /= sum;}
+}
+
 void compute_activation(NeuralNetwork *network)
 {
     for (int i = 0; i < network->size -1; i++) 
@@ -154,6 +173,12 @@ void compute_activation(NeuralNetwork *network)
         for (int j = 0; j < network->neurons_per_layer[i+1]; j++) {
             network->weighted_sums[i]->elements[j] += network->biases[i]->elements[j];
         }
+/*         if (i == network->size -2)
+        {
+            int index_last_layer = network->size -1;
+            softmax(network->weighted_sums[index_last_layer-1], network->activations[index_last_layer]);
+        }
+        else {apply_activation_function(network, i+1);} */
         apply_activation_function(network, i+1);
     }
     calculate_cost(network);
@@ -234,32 +259,91 @@ void backpropagate(NeuralNetwork *network, float learning_rate)
     train_network(network, learning_rate);
 }
 
-int main()
+void train_network_batch(NeuralNetwork *network, Vector *input, float *input_array, int *label, int *offset, int count, float learning_rate)
 {
-    NeuralNetwork *network = init_network((int[]){6,5,5,3},4);
-    Vector *input = create_v(6, (float[]){1,2,3,4,5,6}, INIT);
-
-    set_network_input(network, input);
-    set_desired_single_output(network, 2);
-
-    for (int i = 0; i < 200; i++)
+    int pre_save_offset = 0;
+    for (int i = 0; i < count; i++)
     {
+        get_input_data(input_array, i + *offset, label);
+        setvalues_v(input, input_array, IMAGE_SIZE);
+        set_network_input(network, input);
+        set_desired_single_output(network, *label);
+        
         compute_activation(network);
-        backpropagate(network, 0.1f);
+        backpropagate(network, learning_rate);
+
         system("cls");
-        printf("Iteration %d/200\n", i);
+        printf("Iteration %d/60000\n", i + *offset);
         print_network_output(network);
-        Sleep(1);
+        Sleep(10);
+
+        pre_save_offset++;
     }
 
-    system("cls");
-    print_network_weights(network, false);
-    print_network_vectors(network, true);
-    
-    dispose_network(network);
-    network = NULL;
+    *offset += pre_save_offset;
+}
 
-    dispose_v(input);
-    input = NULL;
+int main()
+{
+    NeuralNetwork *network = init_network((int[]){IMAGE_SIZE,32,16,10},4);
+    Vector *input = create_v(IMAGE_SIZE, (float[]){0}, ZERO);
+    float input_array[IMAGE_SIZE];
+    int label;
+    int offset = 1;
+    float learning_rate = 0.2f;
+
+    char command[MAX_COMMAND_LENGTH];
+    float input_data[IMAGE_SIZE] = {0};
+ 
+    system("cls");
+    printf("Welcome to the Neural CLI Interface\n");
+
+    while (true) 
+    {
+        printf("\n> ");
+        if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL) {continue;}
+        command[strcspn(command, "\n")] = 0;
+        system("cls");
+        
+        if (strcmp(command, "exit") == 0) 
+        {
+            printf("Exiting program.\n");
+            break;
+        } 
+        else if (strcmp(command, "t100") == 0) 
+        {
+            train_network_batch(network, input, input_array, &label, &offset, 100, learning_rate);
+        }
+        else if (strcmp(command, "t1000") == 0) 
+        {
+            train_network_batch(network, input, input_array, &label, &offset, 1000, learning_rate);
+        }
+        else if (strcmp(command, "t5000") == 0) 
+        {
+            train_network_batch(network, input, input_array, &label, &offset, 5000, learning_rate);
+        }
+        else if (strcmp(command, "i100") == 0) 
+        {
+            get_input_data(input_array, 0, &label);
+            setvalues_v(input, input_array, IMAGE_SIZE);
+            set_network_input(network, input);
+            set_desired_single_output(network, label);
+            
+            for (int i = 0; i < 100; i++)
+            {
+                compute_activation(network);
+                backpropagate(network, learning_rate);
+        
+                system("cls");
+                printf("Iteration %d/60000\n", i + offset);
+                print_network_output(network);
+                Sleep(10);
+            }
+        }
+        else 
+        {
+            printf("Unknown command: %s\n", command);
+        }
+    }
     return 0;
 }

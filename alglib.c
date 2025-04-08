@@ -163,6 +163,15 @@ void transform_linear(Matrix *transformation, Vector *vector, Vector *result)
     }
 }
 
+void setvalues_v(Vector *vector, float *data, int size)
+{
+    if (size != vector->size) {printf("setvalues_v -> 1\n"); return;}
+    for (int i = 0; i < size; i++)
+    {
+        vector->elements[i] = data[i];
+    }
+}
+
 float sigmoid(float input)
 {
 	return 1.0f / (1.0f + pow(E, -input));

@@ -41,11 +41,13 @@ Vector *create_v(int size, float *elements, VectorDeclaration value_declaration)
 Matrix *create_m(int rows, int columns, VectorDeclaration value_declaration);
 void dispose_v(Vector *vector);
 void dispose_m(Matrix *matrix);
+
 void print_v(Vector *vector);
 void printmultiple_v(int amount, Vector **vectors, int space, bool use_divider);
 void print_m(Matrix* matrix);
 
 void transform_linear(Matrix *transformation, Vector *vector, Vector *result);
+void setvalues_v(Vector *vector, float *data, int size);
 
 float sigmoid(float input);
 float abl_sigmoid(float input);
