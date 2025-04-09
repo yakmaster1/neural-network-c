@@ -51,6 +51,10 @@ void setvalues_v(Vector *vector, float *data, int size);
 
 float sigmoid(float input);
 float abl_sigmoid(float input);
-Matrix *init_matrix_xavier(int outputs, int inputs);
+
+float relu(float input);
+float abl_relu(float input);
+
+Matrix *pre_init_matrix(int outputs, int inputs);
 
 #endif

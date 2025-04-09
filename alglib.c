@@ -182,8 +182,21 @@ float abl_sigmoid(float input)
 	return sigmoid(input) * (1.0f - sigmoid(input));
 }
 
-// For Sigmoid -> Xavier-Glorot-Initialisation
-Vector *init_vector_xavier(int size, float limit)
+float relu(float input) 
+{
+    return input > 0.0f ? input : 0.0f;
+}
+
+float abl_relu(float input) 
+{
+    return input > 0.0f ? 1.0f : 0.0f;
+}
+
+// Sigmoid -> Xavier-Glorot-Initialisation
+// float limit = 1.0f / sqrtf((float)columns);
+// float random_value = random_uniform(-limit, limit);
+// Re
+Vector *pre_init_vector(int size, float limit)
 {
     if (size < 1) {printf("init_vector_xavier -> 2\n"); return NULL;}
     Vector *vector = malloc(sizeof(Vector));
@@ -199,7 +212,7 @@ Vector *init_vector_xavier(int size, float limit)
 }
 
 // For Sigmoid -> Xavier-Glorot-Initialisation
-Matrix *init_matrix_xavier(int rows, int columns)
+Matrix *pre_init_matrix(int rows, int columns)
 {
     if (rows < 0 || columns < 0) {printf("init_matrix_xavier -> 1\n"); return NULL;}
     Matrix *matrix = malloc(sizeof(Matrix));
@@ -208,10 +221,11 @@ Matrix *init_matrix_xavier(int rows, int columns)
     matrix->columns = columns;
     matrix->vectors = calloc(columns, sizeof(Vector*));
     if(matrix->vectors == NULL) {printf("Mem alloc failed\n"); return NULL;}
-    float limit = 1.0f / sqrtf((float)columns);
+    //float limit = 1.0f / sqrtf((float)columns);
+    float limit = sqrtf(2.0f / columns); // HE init
     for (int i = 0; i < columns; i++)
     {
-        matrix->vectors[i] = init_vector_xavier(rows, limit);
+        matrix->vectors[i] = pre_init_vector(rows, limit);
     }
     return matrix;
 }

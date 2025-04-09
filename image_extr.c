@@ -38,17 +38,3 @@ void get_input_data(float *input_data, int index, int *label_out)
     fclose(label_file);
     *label_out = (int)label_byte;
 }
-
-/* int main()
-{
-    Vector *input = create_v(IMAGE_SIZE, (float[]){0}, ZERO);
-    float input_array[IMAGE_SIZE];
-    int label;
-
-    get_input_data(input_array, 2, &label);
-    setvalues_v(input, input_array, IMAGE_SIZE);
-
-    printf("%d", label);
-
-    dispose_v(input);
-} */
