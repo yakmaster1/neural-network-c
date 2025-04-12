@@ -303,9 +303,9 @@ void train_network_batch(NeuralNetwork *network, Vector *input, float *input_arr
         compute_activation(network);
         backpropagate(network, learning_rate);
 
-        if ((i + *offset) % 50 == 0) {
+        if ((i + *offset) % 100 == 0) {
             system("cls");
-            printf("Iteration %d/60.000\n", i + *offset);
+            printf("Iteration %d/60000\n", i + *offset);
             print_network_output(network);
         }
 
@@ -401,7 +401,7 @@ int main()
     float input_array[IMAGE_SIZE];
     int label;
     int offset = 1;
-    float learning_rate = 0.05f;
+    float learning_rate = 0.0001f;
 
     char command[MAX_COMMAND_LENGTH];
     float input_data[IMAGE_SIZE] = {0};

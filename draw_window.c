@@ -14,9 +14,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void DrawPixel(HWND hwnd, int cx, int cy) {
     HDC hdc = GetDC(hwnd);
     const float kernel[3][3] = {
-        {0.05f, 0.1f, 0.05f},
-        {0.1f,  0.6f, 0.1f },
-        {0.05f, 0.1f, 0.05f}
+        {0.01f, 0.03f, 0.01f},
+        {0.03f, 1.00f, 0.03f},
+        {0.01f, 0.03f, 0.01f}
     };
 
     for (int dy = -1; dy <= 1; dy++) {
