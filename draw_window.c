@@ -9,6 +9,8 @@
 static float input_data[GRID_SIZE * GRID_SIZE] = {0};
 static NeuralNetwork *active_network = NULL;
 
+// GENERIERT VON CHATGPT
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 void DrawPixel(HWND hwnd, int cx, int cy) {

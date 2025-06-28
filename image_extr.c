@@ -8,6 +8,8 @@
 #define IMAGE_PATH "data/train-images.idx3-ubyte"
 #define LABEL_PATH "data/train-labels.idx1-ubyte"
 
+// GENERIERT VON CHATGPT
+
 void get_input_data(float *input_data, int index, int *label_out)
 {
     FILE *image_file = fopen(IMAGE_PATH, "rb");
